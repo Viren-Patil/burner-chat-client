@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
-// const SERVER_URL = "ws://localhost:8000/ws";
-const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
+// const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
+const SERVER_URL = "ws://localhost:8000/ws";
 
-// Helpers
 function bufferToBase64(buf) {
   return btoa(String.fromCharCode(...new Uint8Array(buf)));
 }
@@ -19,6 +18,8 @@ function base64ToBuffer(b64) {
 
 function App() {
   const [room, setRoom] = useState('');
+  const [username, setUsername] = useState('');
+  const [peerName, setPeerName] = useState('Peer');
   const [joined, setJoined] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -58,10 +59,8 @@ function App() {
     socketRef.current = new WebSocket(`${SERVER_URL}/${room}`);
 
     socketRef.current.onopen = () => {
-      socketRef.current.send(JSON.stringify({
-        type: "key",
-        data: myPublicKeyRef.current
-      }));
+      socketRef.current.send(JSON.stringify({ type: "key", data: myPublicKeyRef.current }));
+      socketRef.current.send(JSON.stringify({ type: "name", data: username }));
     };
 
     socketRef.current.onmessage = async (event) => {
@@ -72,6 +71,10 @@ function App() {
       }
 
       const payload = JSON.parse(event.data);
+
+      if (payload.type === "name") {
+        setPeerName(payload.data);
+      }
 
       if (payload.type === "key") {
         const importedPeerKey = await window.crypto.subtle.importKey(
@@ -97,17 +100,12 @@ function App() {
           sharedKeyRef.current = derivedKey;
           keyEstablishedRef.current = true;
           setIsEncrypted(true);
-
-          socketRef.current.send(JSON.stringify({
-            type: "key",
-            data: myPublicKeyRef.current
-          }));
+          socketRef.current.send(JSON.stringify({ type: "key", data: myPublicKeyRef.current }));
         }
       }
 
       if (payload.type === "msg") {
         if (!sharedKeyRef.current) return;
-
         try {
           const iv = base64ToBuffer(payload.iv);
           const ciphertext = base64ToBuffer(payload.data);
@@ -117,7 +115,7 @@ function App() {
             ciphertext
           );
           const message = new TextDecoder().decode(decrypted);
-          setMessages(prev => [...prev, { from: "Peer", text: message }]);
+          setMessages(prev => [...prev, { from: peerName, text: message }]);
         } catch (err) {
           console.error("❌ Decryption failed:", err);
         }
@@ -134,10 +132,7 @@ function App() {
       if (payload.type === "peer_left") {
         let countdown = 5;
         setExitCountdown(countdown);
-        setMessages(prev => [...prev, {
-          from: "System",
-          text: `Peer has left. You will be redirected in 5s...`
-        }]);
+        setMessages(prev => [...prev, { from: "System", text: `Peer has left. You will be redirected in 5s...` }]);
         countdownTimerRef.current = setInterval(() => {
           countdown--;
           setExitCountdown(countdown);
@@ -175,15 +170,12 @@ function App() {
 
   const handleTyping = (e) => {
     setInput(e.target.value);
-
     if (sharedKeyRef.current) {
       socketRef.current.send(JSON.stringify({ type: "typing" }));
     }
-
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
-
     typingTimeoutRef.current = setTimeout(() => {
       socketRef.current.send(JSON.stringify({ type: "stopped_typing" }));
     }, 1000);
@@ -194,7 +186,6 @@ function App() {
       socketRef.current.close();
     }
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
-
     setJoined(false);
     setRoom('');
     setMessages([]);
@@ -202,6 +193,7 @@ function App() {
     setPeerTyping(false);
     setIsEncrypted(false);
     setExitCountdown(null);
+    setPeerName('Peer');
     keyEstablishedRef.current = false;
     sharedKeyRef.current = null;
   };
@@ -218,6 +210,12 @@ function App() {
       {!joined ? (
         <>
           <input
+            placeholder="Your Name"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            style={{ marginBottom: 10 }}
+          />
+          <input
             placeholder="Room ID"
             value={room}
             onChange={(e) => setRoom(e.target.value)}
@@ -227,12 +225,13 @@ function App() {
       ) : (
         <>
           <div style={{ marginBottom: 10 }}>
-            {isEncrypted ? "🔐 Encrypted" : "🔓 Not Secure"}
+            <div>{isEncrypted ? "🔐 Encrypted" : "🔓 Not Secure"}</div>
+            <div>Chatting with: <strong>{peerName}</strong></div>
           </div>
 
           {peerTyping && (
             <div style={{ fontStyle: "italic", color: "gray", marginBottom: 5 }}>
-              Peer is typing...
+              {peerName} is typing...
             </div>
           )}
 
@@ -244,7 +243,7 @@ function App() {
             padding: '0.5rem'
           }}>
             {messages.map((msg, i) => (
-              <div key={i}><strong>{msg.from}:</strong> {msg.text}</div>
+              <div key={i}><strong>{msg.from === 'You' ? 'You' : peerName}:</strong> {msg.text}</div>
             ))}
           </div>
 
