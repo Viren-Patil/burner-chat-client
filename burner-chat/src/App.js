@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-const SERVER_URL = "ws://localhost:8000/ws";
+// const SERVER_URL = "ws://localhost:8000/ws";
+const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
 
 // Helpers
 function bufferToBase64(buf) {
