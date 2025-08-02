@@ -23,6 +23,8 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [peerTyping, setPeerTyping] = useState(false);
+  const [isEncrypted, setIsEncrypted] = useState(false);
+
 
   const privateKeyRef = useRef(null);
   const sharedKeyRef = useRef(null);
@@ -89,6 +91,8 @@ function App() {
             type: "key",
             data: myPublicKeyRef.current
           }));
+
+          setIsEncrypted(true);
         }
       }
 
@@ -175,7 +179,7 @@ function App() {
       ) : (
         <>
           <div style={{ marginBottom: 10 }}>
-            {keyEstablishedRef.current ? "\ud83d\udd10 Encrypted" : "\ud83d\udd13 Not Secure"}
+            {isEncrypted ? "\ud83d\udd10 Encrypted" : "\ud83d\udd13 Not Secure"}
           </div>
 
           {peerTyping && (
