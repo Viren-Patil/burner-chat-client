@@ -1,9 +1,8 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-// const SERVER_URL = "ws://localhost:8000/ws";
-const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
+const SERVER_URL = "ws://localhost:8000/ws";
 
-// Helpers for base64 conversion
+// Helpers
 function bufferToBase64(buf) {
   return btoa(String.fromCharCode(...new Uint8Array(buf)));
 }
@@ -24,7 +23,7 @@ function App() {
   const [input, setInput] = useState('');
   const [peerTyping, setPeerTyping] = useState(false);
   const [isEncrypted, setIsEncrypted] = useState(false);
-
+  const [exitCountdown, setExitCountdown] = useState(null);
 
   const privateKeyRef = useRef(null);
   const sharedKeyRef = useRef(null);
@@ -32,6 +31,17 @@ function App() {
   const keyEstablishedRef = useRef(false);
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const countdownTimerRef = useRef(null);
+
+  useEffect(() => {
+    const cleanup = () => {
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.close();
+      }
+    };
+    window.addEventListener("beforeunload", cleanup);
+    return () => window.removeEventListener("beforeunload", cleanup);
+  }, []);
 
   const joinRoom = async () => {
     const keyPair = await window.crypto.subtle.generateKey(
@@ -55,7 +65,7 @@ function App() {
 
     socketRef.current.onmessage = async (event) => {
       if (event.data === "ROOM_FULL") {
-        alert("Room already has 2 participants. Please use a different room ID.");
+        alert("Room already has 2 participants.");
         socketRef.current.close();
         return;
       }
@@ -85,14 +95,12 @@ function App() {
         if (!keyEstablishedRef.current) {
           sharedKeyRef.current = derivedKey;
           keyEstablishedRef.current = true;
-          console.log("\ud83d\udd10 Shared key established \u2705");
+          setIsEncrypted(true);
 
           socketRef.current.send(JSON.stringify({
             type: "key",
             data: myPublicKeyRef.current
           }));
-
-          setIsEncrypted(true);
         }
       }
 
@@ -102,17 +110,15 @@ function App() {
         try {
           const iv = base64ToBuffer(payload.iv);
           const ciphertext = base64ToBuffer(payload.data);
-
           const decrypted = await window.crypto.subtle.decrypt(
             { name: "AES-GCM", iv },
             sharedKeyRef.current,
             ciphertext
           );
-
           const message = new TextDecoder().decode(decrypted);
           setMessages(prev => [...prev, { from: "Peer", text: message }]);
         } catch (err) {
-          console.error("\u274c Decryption failed:", err);
+          console.error("❌ Decryption failed:", err);
         }
       }
 
@@ -122,6 +128,23 @@ function App() {
 
       if (payload.type === "stopped_typing") {
         setPeerTyping(false);
+      }
+
+      if (payload.type === "peer_left") {
+        let countdown = 5;
+        setExitCountdown(countdown);
+        setMessages(prev => [...prev, {
+          from: "System",
+          text: `Peer has left. You will be redirected in 5s...`
+        }]);
+        countdownTimerRef.current = setInterval(() => {
+          countdown--;
+          setExitCountdown(countdown);
+          if (countdown === 0) {
+            clearInterval(countdownTimerRef.current);
+            cleanupAndReset();
+          }
+        }, 1000);
       }
     };
 
@@ -133,7 +156,6 @@ function App() {
 
     const encoded = new TextEncoder().encode(input);
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
-
     const ciphertext = await window.crypto.subtle.encrypt(
       { name: "AES-GCM", iv },
       sharedKeyRef.current,
@@ -152,6 +174,7 @@ function App() {
 
   const handleTyping = (e) => {
     setInput(e.target.value);
+
     if (sharedKeyRef.current) {
       socketRef.current.send(JSON.stringify({ type: "typing" }));
     }
@@ -163,6 +186,30 @@ function App() {
     typingTimeoutRef.current = setTimeout(() => {
       socketRef.current.send(JSON.stringify({ type: "stopped_typing" }));
     }, 1000);
+  };
+
+  const cleanupAndReset = () => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.close();
+    }
+    if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+
+    setJoined(false);
+    setRoom('');
+    setMessages([]);
+    setInput('');
+    setPeerTyping(false);
+    setIsEncrypted(false);
+    setExitCountdown(null);
+    keyEstablishedRef.current = false;
+    sharedKeyRef.current = null;
+  };
+
+  const handleExitChat = () => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.close();
+    }
+    cleanupAndReset();
   };
 
   return (
@@ -179,7 +226,7 @@ function App() {
       ) : (
         <>
           <div style={{ marginBottom: 10 }}>
-            {isEncrypted ? "\ud83d\udd10 Encrypted" : "\ud83d\udd13 Not Secure"}
+            {isEncrypted ? "🔐 Encrypted" : "🔓 Not Secure"}
           </div>
 
           {peerTyping && (
@@ -188,11 +235,23 @@ function App() {
             </div>
           )}
 
-          <div style={{ height: 300, overflowY: 'scroll', border: '1px solid #ccc', marginBottom: 10 }}>
+          <div style={{
+            height: 300,
+            overflowY: 'scroll',
+            border: '1px solid #ccc',
+            marginBottom: 10,
+            padding: '0.5rem'
+          }}>
             {messages.map((msg, i) => (
               <div key={i}><strong>{msg.from}:</strong> {msg.text}</div>
             ))}
           </div>
+
+          {exitCountdown !== null && (
+            <div style={{ color: 'red', fontWeight: 'bold', marginBottom: 10 }}>
+              Peer left — returning to home in {exitCountdown}s...
+            </div>
+          )}
 
           <input
             placeholder="Type message"
@@ -201,6 +260,12 @@ function App() {
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
           />
           <button onClick={sendMessage}>Send</button>
+          <button
+            onClick={handleExitChat}
+            style={{ marginLeft: 10, backgroundColor: 'red', color: 'white' }}
+          >
+            Exit Chat
+          </button>
         </>
       )}
     </div>
