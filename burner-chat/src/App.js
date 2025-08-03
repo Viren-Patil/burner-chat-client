@@ -29,9 +29,10 @@ function App() {
   const [joined, setJoined] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [peerTyping, setPeerTyping] = useState(false);
+  const [showTypingBubble, setShowTypingBubble] = useState(false);
   const [isEncrypted, setIsEncrypted] = useState(false);
   const [exitCountdown, setExitCountdown] = useState(null);
+  const [showEncryptionInfo, setShowEncryptionInfo] = useState(false);
 
   const privateKeyRef = useRef(null);
   const sharedKeyRef = useRef(null);
@@ -184,11 +185,11 @@ function App() {
       }
 
       if (payload.type === "typing") {
-        setPeerTyping(true);
+        setShowTypingBubble(true);
       }
 
       if (payload.type === "stopped_typing") {
-        setPeerTyping(false);
+        setShowTypingBubble(false);
       }
 
       if (payload.type === "peer_left") {
@@ -272,7 +273,6 @@ function App() {
     setRoom('');
     setMessages([]);
     setInput('');
-    setPeerTyping(false);
     setIsEncrypted(false);
     setExitCountdown(null);
     setPeerName('Peer');
@@ -291,24 +291,34 @@ function App() {
     <div className="chat-container">
       {!joined ? (
         <div className="join-screen">
-          <input
-            className="input"
-            placeholder="Your Name"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <input
-            className="input"
-            placeholder="Room ID"
-            value={room}
-            onChange={(e) => setRoom(e.target.value)}
-          />
-          <button className="button" onClick={joinRoom}>Join</button>
+          <div className="input-row">
+            <input
+              className="input"
+              placeholder="Your Name"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <input
+              className="input"
+              placeholder="Room ID"
+              value={room}
+              onChange={(e) => setRoom(e.target.value)}
+            />
+          </div>
+          <button className="button join-button" onClick={joinRoom}>Join</button>
         </div>
       ) : (
         <div className="chat-window">
           <div className="chat-header">
-            <span>{isEncrypted ? "🔐 Encrypted" : "🔓 Not Secure"}</span>
+            <span>
+              {isEncrypted ? "🔐 Encrypted" : "🔓 Not Secure"}
+              <i 
+                className="fa-solid fa-circle-info" 
+                title="What is encryption?"
+                onClick={() => setShowEncryptionInfo(true)} 
+                style={{ marginLeft: '0.5rem', cursor: 'pointer', color: '#114b5f' }}
+              ></i>
+            </span>
             <span>Talking to <strong>{peerName}</strong> | <i class="fa-solid fa-right-from-bracket" onClick={handleExitChat} title="Exit chat"></i></span>
           </div>
 
@@ -340,11 +350,17 @@ function App() {
                 )}
               </div>
             ))}
-            <div ref={messagesEndRef} />
-          </div>
 
-          <div className="typing-indicator">
-            {peerTyping ? `${peerName} is typing...` : ''}
+            {showTypingBubble && (
+              <div className="chat-bubble incoming">
+                <div className="chat-author">{peerName}</div>
+                <div className="typing-dots">
+                  <span></span><span></span><span></span>
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
           </div>
 
           {exitCountdown !== null && (
@@ -377,6 +393,23 @@ function App() {
           </div>
         </div>
       )}
+
+      {showEncryptionInfo && (
+        <div className="encryption-modal">
+          <div className="modal-content">
+            <h2>End-to-End Encryption 🔐</h2>
+            <p>
+              Messages and images you send are encrypted on your device and can only be decrypted by the other person. 
+              No one—not even the server—can read your messages.
+            </p>
+            <p>
+              Once the chat ends, all keys are discarded. Nothing is saved or stored anywhere.
+            </p>
+            <button onClick={() => setShowEncryptionInfo(false)}>Got it</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
