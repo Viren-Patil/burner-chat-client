@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import './App.css';
 
-// const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
-const SERVER_URL = "ws://localhost:8000/ws";
+const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
+// const SERVER_URL = "ws://localhost:8000/ws";
 
 function bufferToBase64(buf) {
   return btoa(String.fromCharCode(...new Uint8Array(buf)));
