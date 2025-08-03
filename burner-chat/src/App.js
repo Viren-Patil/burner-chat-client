@@ -59,7 +59,23 @@ function App() {
     return () => window.removeEventListener("beforeunload", cleanup);
   }, []);
 
+  function formatTime(isoString) {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function formatDate(isoString) {
+    const date = new Date(isoString);
+    return date.toLocaleDateString('en-US', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  }
+
+
   const handleImageUpload = async (e) => {
+    const now = new Date();
     const file = e.target.files[0];
     if (!file || !sharedKeyRef.current) return;
 
@@ -81,7 +97,7 @@ function App() {
 
     // Show your own image immediately
     const localURL = URL.createObjectURL(file);
-    setMessages(prev => [...prev, { from: 'You', image: localURL }]);
+    setMessages(prev => [...prev, { from: 'You', image: localURL, time: now.toISOString() }]);
 
     e.target.value = null;
   };
@@ -106,6 +122,9 @@ function App() {
     };
 
     socketRef.current.onmessage = async (event) => {
+
+      const now = new Date();
+
       if (event.data === "ROOM_FULL") {
         alert("Room already has 2 participants.");
         socketRef.current.close();
@@ -158,7 +177,7 @@ function App() {
             ciphertext
           );
           const message = new TextDecoder().decode(decrypted);
-          setMessages(prev => [...prev, { from: peerNameRef.current, text: message }]);
+          setMessages(prev => [...prev, { from: peerNameRef.current, text: message, time: now.toISOString() }]);
         } catch (err) {
           console.error("❌ Decryption failed:", err);
         }
@@ -175,7 +194,7 @@ function App() {
       if (payload.type === "peer_left") {
         let countdown = 5;
         setExitCountdown(countdown);
-        setMessages(prev => [...prev, { from: "System", text: `${peerNameRef.current} has left. You will be redirected in 5s...` }]);
+        setMessages(prev => [...prev, { from: "System", text: `${peerNameRef.current} has left. You will be redirected in 5s...`, time: now.toISOString() }]);
         countdownTimerRef.current = setInterval(() => {
           countdown--;
           setExitCountdown(countdown);
@@ -199,7 +218,7 @@ function App() {
 
           const blob = new Blob([decrypted], { type: payload.mime });
           const url = URL.createObjectURL(blob);
-          setMessages(prev => [...prev, { from: peerNameRef.current, image: url }]);
+          setMessages(prev => [...prev, { from: peerNameRef.current, image: url, time: now.toISOString() }]);
         } catch (err) {
           console.error("❌ Image decryption failed:", err);
         }
@@ -212,6 +231,7 @@ function App() {
   const sendMessage = async () => {
     if (!input.trim() || !sharedKeyRef.current) return;
 
+    const now = new Date();
     const encoded = new TextEncoder().encode(input);
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const ciphertext = await window.crypto.subtle.encrypt(
@@ -226,7 +246,7 @@ function App() {
       iv: bufferToBase64(iv)
     }));
 
-    setMessages(prev => [...prev, { from: 'You', text: input }]);
+    setMessages(prev => [...prev, { from: 'You', text: input, time: now.toISOString() }]);
     setInput('');
   };
 
@@ -292,7 +312,19 @@ function App() {
             <span>Talking to <strong>{peerName}</strong> | <i class="fa-solid fa-right-from-bracket" onClick={handleExitChat} title="Exit chat"></i></span>
           </div>
 
+          {!isEncrypted && (
+            <div className="loading-overlay">
+              <div className="spinner" />
+              <p>Establishing encryption…</p>
+            </div>
+          )}
+
           <div className="chat-messages">
+            {messages.length > 0 && messages[0].time && (
+              <div className="date-banner">
+                {formatDate(messages[0].time)}
+              </div>
+            )}
             {messages.map((msg, i) => (
               <div key={i} className={`chat-bubble ${msg.from === 'You' ? 'outgoing' : 'incoming'}`}>
                 <div className="chat-author">{msg.from}</div>
@@ -302,6 +334,9 @@ function App() {
                   </div>
                 ) : (
                   <div className="chat-text">{msg.text}</div>
+                )}
+                {msg.time && (
+                  <div className="chat-time">{formatTime(msg.time)}</div>
                 )}
               </div>
             ))}
