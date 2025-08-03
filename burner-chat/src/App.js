@@ -142,7 +142,7 @@ function App() {
       if (payload.type === "peer_left") {
         let countdown = 5;
         setExitCountdown(countdown);
-        setMessages(prev => [...prev, { from: "System", text: `Peer has left. You will be redirected in 5s...` }]);
+        setMessages(prev => [...prev, { from: "System", text: `${peerNameRef.current} has left. You will be redirected in 5s...` }]);
         countdownTimerRef.current = setInterval(() => {
           countdown--;
           setExitCountdown(countdown);

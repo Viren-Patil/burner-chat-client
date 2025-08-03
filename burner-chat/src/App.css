@@ -54,6 +54,8 @@ html, body {
 
 .button {
   padding: 0.75rem 1rem;
+  max-width: 33%;
+  white-space: nowrap;
   font-size: 1rem;
   background: #333;
   color: white;
@@ -68,7 +70,6 @@ html, body {
 
 .button.exit {
   background: #c0392b;
-  margin-left: 0.5rem;
 }
 
 .chat-header {
