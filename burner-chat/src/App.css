@@ -70,6 +70,8 @@ html, body {
 }
 
 .button.send {
+  padding-right: 10px;
+  padding-left: 10px;
   background-color: #3A6E49;
 }
 
@@ -135,6 +137,17 @@ html, body {
   font-size: 1rem;
 }
 
+.chat-image img {
+  max-width: 250px;
+  max-height: 250px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #e0e0e0;
+  padding: 4px;
+}
+
 .chat-input {
   display: flex;
   align-items: center;
@@ -153,6 +166,12 @@ html, body {
 
 .exit-warning {
   font-weight: bold;
-  color: red;
+  color: #940000;
   margin-bottom: 0.5rem;
+}
+
+.fa-right-from-bracket {
+  font-size: 15px;
+  color: #940000;
+  cursor: pointer;
 }

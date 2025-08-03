@@ -4,8 +4,13 @@ import './App.css';
 const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
 // const SERVER_URL = "ws://localhost:8000/ws";
 
-function bufferToBase64(buf) {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+function bufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 function base64ToBuffer(b64) {
@@ -53,6 +58,34 @@ function App() {
     window.addEventListener("beforeunload", cleanup);
     return () => window.removeEventListener("beforeunload", cleanup);
   }, []);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !sharedKeyRef.current) return;
+
+    const arrayBuffer = await file.arrayBuffer();
+
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await window.crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      sharedKeyRef.current,
+      arrayBuffer
+    );
+
+    socketRef.current.send(JSON.stringify({
+      type: "img",
+      data: bufferToBase64(encrypted),
+      iv: bufferToBase64(iv),
+      mime: file.type
+    }));
+
+    // Show your own image immediately
+    const localURL = URL.createObjectURL(file);
+    setMessages(prev => [...prev, { from: 'You', image: localURL }]);
+
+    e.target.value = null;
+  };
+
 
   const joinRoom = async () => {
     const keyPair = await window.crypto.subtle.generateKey(
@@ -152,6 +185,25 @@ function App() {
           }
         }, 1000);
       }
+
+      if (payload.type === "img") {
+        if (!sharedKeyRef.current) return;
+        try {
+          const iv = base64ToBuffer(payload.iv);
+          const encryptedData = base64ToBuffer(payload.data);
+          const decrypted = await window.crypto.subtle.decrypt(
+            { name: "AES-GCM", iv },
+            sharedKeyRef.current,
+            encryptedData
+          );
+
+          const blob = new Blob([decrypted], { type: payload.mime });
+          const url = URL.createObjectURL(blob);
+          setMessages(prev => [...prev, { from: peerNameRef.current, image: url }]);
+        } catch (err) {
+          console.error("❌ Image decryption failed:", err);
+        }
+      }
     };
 
     setJoined(true);
@@ -237,14 +289,20 @@ function App() {
         <div className="chat-window">
           <div className="chat-header">
             <span>{isEncrypted ? "🔐 Encrypted" : "🔓 Not Secure"}</span>
-            <span>Talking to <strong>{peerName}</strong></span>
+            <span>Talking to <strong>{peerName}</strong> | <i class="fa-solid fa-right-from-bracket" onClick={handleExitChat} title="Exit chat"></i></span>
           </div>
 
           <div className="chat-messages">
             {messages.map((msg, i) => (
               <div key={i} className={`chat-bubble ${msg.from === 'You' ? 'outgoing' : 'incoming'}`}>
                 <div className="chat-author">{msg.from}</div>
-                <div className="chat-text">{msg.text}</div>
+                {msg.image ? (
+                  <div className="chat-image">
+                    <img src={msg.image} alt="sent" />
+                  </div>
+                ) : (
+                  <div className="chat-text">{msg.text}</div>
+                )}
               </div>
             ))}
             <div ref={messagesEndRef} />
@@ -271,9 +329,16 @@ function App() {
             <button className="button send" onClick={sendMessage}>
               <i class="fa-solid fa-paper-plane"></i>
             </button>
-            <button className="button exit" onClick={handleExitChat}>
-              <i class="fa-solid fa-right-from-bracket"></i>
-            </button>
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              id="image-upload"
+              onChange={handleImageUpload}
+            />
+            <label htmlFor="image-upload" className="button image-upload">
+              <i className="fa-solid fa-image"></i>
+            </label>
           </div>
         </div>
       )}
