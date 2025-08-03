@@ -1,38 +1,147 @@
-.App {
-  text-align: center;
+html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+  background: #f1f1f1;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.chat-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;      /* Full viewport height */
+  padding: 1rem;
+  background: #f1f1f1;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.join-screen {
+  width: 100%;
+  max-width: 500px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+}
+
+.chat-window {
+  width: 100%;
+  max-width: 500px;
+  height: 90vh;          /* Less than 100% so it's not cramped */
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.input {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+
+.button {
+  padding: 0.75rem 1rem; /* match .input vertical padding */
+  font-size: 1rem;
+  background: #333;
   color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  height: 100%; /* ensures it stretches with flex */
+  display: flex;
+  align-items: center;
 }
 
-.App-link {
-  color: #61dafb;
+
+.button.exit {
+  background: #c0392b;
+  margin-left: 0.5rem;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 0.5rem;
+}
+
+.chat-messages {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-bubble {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 15px;
+  max-width: 75%;
+  word-wrap: break-word;
+}
+
+.incoming {
+  background: #e1f5fe;
+  align-self: flex-start;
+  border-bottom-left-radius: 0;
+}
+
+.outgoing {
+  background: #c8e6c9;
+  align-self: flex-end;
+  border-bottom-right-radius: 0;
+  text-align: right;
+}
+
+.chat-author {
+  font-weight: bold;
+  margin-bottom: 2px;
+  font-size: 0.85rem;
+}
+
+.chat-text {
+  font-size: 1rem;
+}
+
+.chat-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.typing-indicator {
+  height: 1.2rem;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: gray;
+  margin-bottom: 0.5rem;
+}
+
+.exit-warning {
+  font-weight: bold;
+  color: red;
+  margin-bottom: 0.5rem;
 }

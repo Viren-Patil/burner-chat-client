@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import './App.css';
 
-const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
-// const SERVER_URL = "ws://localhost:8000/ws";
+// const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
+const SERVER_URL = "ws://localhost:8000/ws";
 
 function bufferToBase64(buf) {
   return btoa(String.fromCharCode(...new Uint8Array(buf)));
@@ -34,6 +35,14 @@ function App() {
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const countdownTimerRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const peerNameRef = useRef('Peer');
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   useEffect(() => {
     const cleanup = () => {
@@ -74,6 +83,7 @@ function App() {
 
       if (payload.type === "name") {
         setPeerName(payload.data);
+        peerNameRef.current = payload.data;
       }
 
       if (payload.type === "key") {
@@ -115,7 +125,7 @@ function App() {
             ciphertext
           );
           const message = new TextDecoder().decode(decrypted);
-          setMessages(prev => [...prev, { from: peerName, text: message }]);
+          setMessages(prev => [...prev, { from: peerNameRef.current, text: message }]);
         } catch (err) {
           console.error("❌ Decryption failed:", err);
         }
@@ -206,67 +216,62 @@ function App() {
   };
 
   return (
-    <div style={{ padding: 20 }}>
+    <div className="chat-container">
       {!joined ? (
-        <>
+        <div className="join-screen">
           <input
+            className="input"
             placeholder="Your Name"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            style={{ marginBottom: 10 }}
           />
           <input
+            className="input"
             placeholder="Room ID"
             value={room}
             onChange={(e) => setRoom(e.target.value)}
           />
-          <button onClick={joinRoom}>Join</button>
-        </>
+          <button className="button" onClick={joinRoom}>Join</button>
+        </div>
       ) : (
-        <>
-          <div style={{ marginBottom: 10 }}>
-            <div>{isEncrypted ? "🔐 Encrypted" : "🔓 Not Secure"}</div>
-            <div>Chatting with: <strong>{peerName}</strong></div>
+        <div className="chat-window">
+          <div className="chat-header">
+            <span>{isEncrypted ? "🔐 Encrypted" : "🔓 Not Secure"}</span>
+            <span>Talking to <strong>{peerName}</strong></span>
           </div>
 
-          {peerTyping && (
-            <div style={{ fontStyle: "italic", color: "gray", marginBottom: 5 }}>
-              {peerName} is typing...
-            </div>
-          )}
-
-          <div style={{
-            height: 300,
-            overflowY: 'scroll',
-            border: '1px solid #ccc',
-            marginBottom: 10,
-            padding: '0.5rem'
-          }}>
+          <div className="chat-messages">
             {messages.map((msg, i) => (
-              <div key={i}><strong>{msg.from === 'You' ? 'You' : peerName}:</strong> {msg.text}</div>
+              <div key={i} className={`chat-bubble ${msg.from === 'You' ? 'outgoing' : 'incoming'}`}>
+                <div className="chat-author">{msg.from}</div>
+                <div className="chat-text">{msg.text}</div>
+              </div>
             ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="typing-indicator">
+            {peerTyping ? `${peerName} is typing...` : ''}
           </div>
 
           {exitCountdown !== null && (
-            <div style={{ color: 'red', fontWeight: 'bold', marginBottom: 10 }}>
+            <div className="exit-warning">
               Peer left — returning to home in {exitCountdown}s...
             </div>
           )}
 
-          <input
-            placeholder="Type message"
-            value={input}
-            onChange={handleTyping}
-            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-          />
-          <button onClick={sendMessage}>Send</button>
-          <button
-            onClick={handleExitChat}
-            style={{ marginLeft: 10, backgroundColor: 'red', color: 'white' }}
-          >
-            Exit Chat
-          </button>
-        </>
+          <div className="chat-input">
+            <input
+              className="input"
+              placeholder="Type message"
+              value={input}
+              onChange={handleTyping}
+              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            />
+            <button className="button" onClick={sendMessage}>Send</button>
+            <button className="button exit" onClick={handleExitChat}>Exit</button>
+          </div>
+        </div>
       )}
     </div>
   );
