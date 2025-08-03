@@ -268,8 +268,12 @@ function App() {
               onChange={handleTyping}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             />
-            <button className="button" onClick={sendMessage}>Send</button>
-            <button className="button exit" onClick={handleExitChat}>Exit</button>
+            <button className="button send" onClick={sendMessage}>
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+            <button className="button exit" onClick={handleExitChat}>
+              <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
           </div>
         </div>
       )}
