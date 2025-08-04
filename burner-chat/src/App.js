@@ -359,7 +359,7 @@ function App() {
                 onTouchStart={() => {
                 longPressTimeoutRef.current = setTimeout(() => {
                     setHoveredMessage(i);
-                  }, 500);
+                  }, 1000);
                 }}
                 onTouchEnd={() => {
                   clearTimeout(longPressTimeoutRef.current);
@@ -463,7 +463,7 @@ function App() {
             <h2>End-to-End Encryption 🔐</h2>
             <p>
               Messages and images you send are encrypted on your device and can only be decrypted by the other person. 
-              No one—not even the server—can read your messages.
+              No one—not even the server—can read your messages. <a href='https://en.wikipedia.org/wiki/End-to-end_encryption'>Read more</a>
             </p>
             <p>
               Once the chat ends, all keys are discarded. Nothing is saved or stored anywhere.
