@@ -37,7 +37,7 @@ function App() {
   const [showEncryptionInfo, setShowEncryptionInfo] = useState(false);
   const [messageReactions, setMessageReactions] = useState({});
   const [hoveredMessage, setHoveredMessage] = useState(null);
-
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const privateKeyRef = useRef(null);
   const sharedKeyRef = useRef(null);
@@ -370,7 +370,7 @@ function App() {
               >
                 <div className="chat-author">{msg.from}</div>
                 {msg.image ? (
-                  <div className="chat-image">
+                  <div className="chat-image" onClick={() => setSelectedImage(msg.image)}>
                     <img src={msg.image} alt="sent" />
                   </div>
                 ) : (
@@ -469,6 +469,16 @@ function App() {
               Once the chat ends, all keys are discarded. Nothing is saved or stored anywhere.
             </p>
             <button onClick={() => setShowEncryptionInfo(false)}>Got it</button>
+          </div>
+        </div>
+      )}
+
+      {selectedImage && (
+        <div className="image-modal" onClick={() => setSelectedImage(null)}>
+          <div className="modal-overlay" />
+          <div className="modal-content">
+            <img src={selectedImage} alt="Full view" />
+            <button className="close-btn" onClick={() => setSelectedImage(null)}>×</button>
           </div>
         </div>
       )}
