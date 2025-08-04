@@ -3,6 +3,8 @@ import './App.css';
 
 const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
 // const SERVER_URL = "ws://localhost:8000/ws";
+const emojiOptions = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+
 
 function bufferToBase64(buffer) {
   let binary = '';
@@ -33,6 +35,9 @@ function App() {
   const [isEncrypted, setIsEncrypted] = useState(false);
   const [exitCountdown, setExitCountdown] = useState(null);
   const [showEncryptionInfo, setShowEncryptionInfo] = useState(false);
+  const [messageReactions, setMessageReactions] = useState({});
+  const [hoveredMessage, setHoveredMessage] = useState(null);
+
 
   const privateKeyRef = useRef(null);
   const sharedKeyRef = useRef(null);
@@ -43,6 +48,7 @@ function App() {
   const countdownTimerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const peerNameRef = useRef('Peer');
+  const longPressTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -224,6 +230,15 @@ function App() {
           console.error("❌ Image decryption failed:", err);
         }
       }
+
+      if (payload.type === "reaction") {
+        const { index, emoji } = payload;
+        setMessageReactions(prev => ({
+          ...prev,
+          [index]: emoji,
+        }));
+      }
+
     };
 
     setJoined(true);
@@ -336,7 +351,23 @@ function App() {
               </div>
             )}
             {messages.map((msg, i) => (
-              <div key={i} className={`chat-bubble ${msg.from === 'You' ? 'outgoing' : 'incoming'}`}>
+              <div
+                key={i}
+                className={`chat-bubble ${msg.from === 'You' ? 'outgoing' : 'incoming'}`}
+                onMouseEnter={() => setHoveredMessage(i)}
+                onMouseLeave={() => setHoveredMessage(null)}
+                onTouchStart={() => {
+                longPressTimeoutRef.current = setTimeout(() => {
+                    setHoveredMessage(i);
+                  }, 500);
+                }}
+                onTouchEnd={() => {
+                  clearTimeout(longPressTimeoutRef.current);
+                }}
+                onTouchMove={() => {
+                  clearTimeout(longPressTimeoutRef.current);
+                }}
+              >
                 <div className="chat-author">{msg.from}</div>
                 {msg.image ? (
                   <div className="chat-image">
@@ -347,6 +378,38 @@ function App() {
                 )}
                 {msg.time && (
                   <div className="chat-time">{formatTime(msg.time)}</div>
+                )}
+
+                {hoveredMessage === i && msg.from !== 'You' && (
+                  <div className="emoji-popup">
+                    {emojiOptions.map((emoji) => (
+                      <span
+                        key={emoji}
+                        className="emoji-option"
+                        onClick={() => {
+                          setMessageReactions((prev) => ({
+                            ...prev,
+                            [i]: prev[i] === emoji ? null : emoji,
+                          }));
+
+                          socketRef.current.send(JSON.stringify({
+                            type: "reaction",
+                            index: i,
+                            emoji: emoji === messageReactions[i] ? null : emoji,
+                          }));
+
+                        }}
+                      >
+                        {emoji}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {messageReactions[i] && (
+                  <div className="emoji-reaction">
+                    {messageReactions[i]}
+                  </div>
                 )}
               </div>
             ))}

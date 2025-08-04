@@ -124,11 +124,48 @@ html, body {
 }
 
 .chat-bubble {
+  position: relative;
   margin-bottom: 0.75rem;
   padding: 0.5rem 0.75rem;
   border-radius: 15px;
   max-width: 75%;
   word-wrap: break-word;
+}
+
+.emoji-popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  bottom: auto;
+  right: 0;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  padding: 0.25rem 0.5rem;
+  display: flex;
+  gap: 0.4rem;
+  font-size: 1.2rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  z-index: 2;
+}
+
+.incoming .emoji-popup {
+  left: 0;
+  right: auto;
+}
+
+.emoji-option {
+  cursor: pointer;
+  transition: transform 0.1s ease-in-out;
+}
+
+.emoji-option:hover {
+  transform: scale(1.3);
+}
+
+.emoji-reaction {
+  margin-top: 0.25rem;
+  font-size: 1.2rem;
+  text-align: right;
 }
 
 .incoming {
@@ -322,6 +359,52 @@ html, body {
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
 }
+
+.message-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.emoji-button {
+  position: absolute;
+  top: 4px;
+  right: -30px;
+  cursor: pointer;
+  font-size: 1rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.message-wrapper:hover .emoji-button {
+  opacity: 1;
+}
+
+.emoji-picker {
+  position: absolute;
+  top: -30px;
+  right: -10px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 4px 6px;
+  display: flex;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+.emoji-picker span {
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.chat-reaction {
+  font-size: 1.1rem;
+  margin-top: 4px;
+  text-align: right;
+}
+
 
 @keyframes spin {
   to {
