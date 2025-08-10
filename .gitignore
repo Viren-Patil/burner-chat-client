@@ -2,6 +2,8 @@
 
 # dependencies
 burner-chat/node_modules
+burner-chat/.env.production
+burner-chat/.env.development
 /.pnp
 .pnp.js
 
