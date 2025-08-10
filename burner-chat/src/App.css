@@ -40,7 +40,7 @@ html, body {
 
 .input-row .input {
   flex: 1;
-  min-width: 0; /* important to allow shrinking */
+  min-width: 0;
 }
 
 .join-button {
@@ -113,7 +113,7 @@ html, body {
   background-repeat: no-repeat;
   background-position: center;
   flex-grow: 1;
-  min-height: 0; /* critical for flexbox scroll */
+  min-height: 0;
   overflow-y: auto;
   padding: 0.5rem;
   border: 1px solid #ddd;
@@ -164,8 +164,8 @@ html, body {
 
 .incoming .emoji-reaction {
   position: absolute;
-  bottom: -10px;   /* slightly offset below bubble */
-  right: -10px;    /* align to the right edge */
+  bottom: -10px;
+  right: -10px;
   border-radius: 50%;
   padding: 2px 6px;
   font-size: 1.1rem;
@@ -175,8 +175,8 @@ html, body {
 
 .outgoing .emoji-reaction {
   position: absolute;
-  bottom: -10px;   /* slightly offset below bubble */
-  left: -10px;    /* align to the right edge */
+  bottom: -10px;
+  left: -10px;
   border-radius: 50%;
   padding: 2px 6px;
   font-size: 1.1rem;
@@ -459,7 +459,6 @@ html, body {
   text-align: right;
 }
 
-/* Reply UI above input */
 .reply-pill {
   display: flex;
   align-items: center;
@@ -490,7 +489,6 @@ html, body {
   cursor: pointer;
 }
 
-/* Quoted block inside a bubble */
 .quoted-reply {
   background: rgba(0,0,0,0.04);
   border-left: 3px solid #888;
@@ -515,28 +513,81 @@ html, body {
   color: #333;
 }
 
-/* Brief highlight when jumping */
 .reply-highlight {
   animation: replyFlash 2s ease;
 }
-@keyframes replyFlash {
-  0%   { box-shadow: 0 0 0px rgba(255, 230, 0, 0); }
-  30%  { box-shadow: 0 0 10px rgba(255, 230, 0, 0.9); }
-  100% { box-shadow: 0 0 0px rgba(255, 230, 0, 0); }
-}
 
-/* Small tweak so the reply icon sits nicely with emojis */
 .reply-action {
   font-size: 1.1rem;
   margin-right: 6px;
   cursor: pointer;
 }
 
+.editing-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.edit-textarea {
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 0.5rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+  resize: vertical;
+  background: #fff;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.edit-btn {
+  --accent: #114b5f;
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.06s ease, opacity 0.15s ease, background 0.15s ease;
+}
+
+.edit-btn:hover { opacity: 0.9; }
+.edit-btn:active { transform: translateY(1px); }
+
+.edit-btn.ghost {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.edit-btn.ghost:hover {
+  background: rgba(17, 75, 95, 0.08);
+}
+
+.edited-label {
+  font-size: 0.75rem;
+  color: #555;
+  margin-left: 6px;
+}
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
+}
+
+@keyframes replyFlash {
+  0%   { box-shadow: 0 0 0px rgba(255, 230, 0, 0); }
+  30%  { box-shadow: 0 0 10px rgba(255, 230, 0, 0.9); }
+  100% { box-shadow: 0 0 0px rgba(255, 230, 0, 0); }
 }
 
 @media (max-width: 500px) {

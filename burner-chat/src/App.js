@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import './App.css';
 
-// const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
-const SERVER_URL = "ws://localhost:8000/ws";
+const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
+// const SERVER_URL = "ws://localhost:8000/ws";
 const emojiOptions = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
 
@@ -39,6 +39,7 @@ function App() {
   const [hoveredMessage, setHoveredMessage] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [replyTarget, setReplyTarget] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
 
   const privateKeyRef = useRef(null);
   const sharedKeyRef = useRef(null);
@@ -206,6 +207,31 @@ function App() {
         }
       }
 
+      if (payload.type === "edit") {
+        if (!sharedKeyRef.current) return;
+        try {
+          const iv = base64ToBuffer(payload.iv);
+          const ciphertext = base64ToBuffer(payload.data);
+          const decrypted = await window.crypto.subtle.decrypt(
+            { name: "AES-GCM", iv },
+            sharedKeyRef.current,
+            ciphertext
+          );
+          const newText = new TextDecoder().decode(decrypted);
+          const idx = payload.index;
+
+          setMessages(prev => {
+            if (idx < 0 || idx >= prev.length) return prev;
+            // safety: only allow peer to edit messages they originally sent
+            if (prev[idx]?.from === 'You') return prev;
+            const copy = [...prev];
+            copy[idx] = { ...copy[idx], text: newText, edited: true };
+            return copy;
+          });
+        } catch (err) {
+          console.error("❌ Edit decryption failed:", err);
+        }
+      }
 
       if (payload.type === "typing") {
         setShowTypingBubble(true);
@@ -290,6 +316,39 @@ function App() {
     setReplyTarget(null);
   };
 
+  const startEdit = (index, currentText) => {
+    setEditTarget({ index, value: currentText || "" });
+  };
+
+  const cancelEdit = () => setEditTarget(null);
+
+  const submitEdit = async () => {
+    if (!sharedKeyRef.current || !editTarget) return;
+    const { index, value } = editTarget;
+    if (!value.trim()) return;
+
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(value);
+    const ciphertext = await window.crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      sharedKeyRef.current,
+      encoded
+    );
+
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({
+        type: "edit",
+        index,
+        data: bufferToBase64(ciphertext),
+        iv: bufferToBase64(iv),
+      }));
+    }
+
+    setMessages(prev =>
+      prev.map((m, i) => i === index ? { ...m, text: value, edited: true } : m)
+    );
+    setEditTarget(null);
+  };
 
   const handleTyping = (e) => {
     setInput(e.target.value);
@@ -375,7 +434,7 @@ function App() {
                 {formatDate(messages[0].time)}
               </div>
             )}
-            
+
             {messages.map((msg, i) => {
               const quoted = (typeof msg.replyTo === 'number') ? messages[msg.replyTo] : null;
 
@@ -396,38 +455,71 @@ function App() {
                 >
                   <div className="chat-author">{msg.from}</div>
 
-                  {quoted && (
-                    <div
-                      className="quoted-reply"
-                      onClick={() => {
-                        const node = messageRefs.current[msg.replyTo];
-                        if (node) {
-                          node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          node.classList.add('reply-highlight');
-                          setTimeout(() => node.classList.remove('reply-highlight'), 1200);
-                        }
-                      }}
-                      title="Jump to replied message"
-                    >
-                      <div className="quoted-author">{quoted.from}</div>
-                      <div className="quoted-snippet">
-                        {quoted.image ? "[image]" : (quoted.text || "")}
+                  {editTarget?.index === i ? (
+                    <div className="editing-area">
+                      <textarea
+                        className="edit-textarea"
+                        value={editTarget.value}
+                        onChange={(e) => setEditTarget(t => ({ ...t, value: e.target.value }))}
+                        rows={2}
+                        autoFocus
+                      />
+                      <div className="edit-actions">
+                        <button className="edit-btn" onClick={submitEdit}>Save</button>
+                        <button className="edit-btn ghost" onClick={cancelEdit}>Cancel</button>
                       </div>
                     </div>
-                  )}
-
-                  {msg.image ? (
-                    <div className="chat-image" onClick={() => setSelectedImage(msg.image)}>
-                      <img src={msg.image} alt="sent" />
-                    </div>
                   ) : (
-                    <div className="chat-text">{msg.text}</div>
-                  )}
+                    <>
+                      {quoted && (
+                        <div
+                          className="quoted-reply"
+                          onClick={() => {
+                            const node = messageRefs.current[msg.replyTo];
+                            if (node) {
+                              node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              node.classList.add('reply-highlight');
+                              setTimeout(() => node.classList.remove('reply-highlight'), 1200);
+                            }
+                          }}
+                          title="Jump to replied message"
+                        >
+                          <div className="quoted-author">{quoted.from}</div>
+                          <div className="quoted-snippet">
+                            {quoted.image ? "[image]" : (quoted.text || "")}
+                          </div>
+                        </div>
+                      )}
 
-                  {msg.time && <div className="chat-time">{formatTime(msg.time)}</div>}
+                      {msg.image ? (
+                        <div className="chat-image" onClick={() => setSelectedImage(msg.image)}>
+                          <img src={msg.image} alt="sent" />
+                        </div>
+                      ) : (
+                        <div className="chat-text">{msg.text}</div>
+                      )}
+                      {msg.time && (
+                        <div className="chat-time">
+                          {formatTime(msg.time)} {msg.edited && <span className="edited-label">(edited)</span>}
+                        </div>
+                      )}
+                    </>
+                  )}
 
                   {hoveredMessage === i && (
                     <div className="emoji-popup">
+                      {msg.from === 'You' && !msg.image && (
+                        <span
+                          className="reply-action"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEdit(i, msg.text);
+                          }}
+                          title="Edit"
+                        >
+                          ✏️
+                        </span>
+                      )}
                       <span
                         className="reply-action"
                         onClick={(e) => {
