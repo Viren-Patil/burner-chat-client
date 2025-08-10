@@ -361,17 +361,20 @@ html, body {
 }
 
 .image-modal .modal-content {
-  position: relative;
-  max-width: 90%;
-  max-height: 90%;
-  border-radius: 8px;
-  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 90vw;
+  max-height: 90vh;
 }
 
 .image-modal img {
-  width: 100%;
+  max-width: 90vw;   /* never exceed 90% of viewport width */
+  max-height: 90vh;  /* never exceed 90% of viewport height */
+  width: auto;
   height: auto;
   border-radius: 8px;
+  object-fit: contain;
 }
 
 .image-modal .close-btn {
@@ -594,4 +597,19 @@ html, body {
   .input-row {
     flex-direction: column;
   }
+}
+
+/* smooth fade/slide for new messages */
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.bubble-in {
+  animation: bubbleIn 500ms ease-out both;
+}
+
+/* respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .bubble-in { animation: none; }
 }

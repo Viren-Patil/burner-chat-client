@@ -51,6 +51,7 @@ function App() {
   const peerNameRef = useRef('Peer');
   const longPressTimeoutRef = useRef(null);
   const messageRefs = useRef({});
+  const msgSound = useRef(new Audio('/msg.wav'));
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -106,7 +107,9 @@ function App() {
 
     // Show your own image immediately
     const localURL = URL.createObjectURL(file);
-    setMessages(prev => [...prev, { from: 'You', image: localURL, time: now.toISOString() }]);
+    msgSound.current.currentTime = 0;
+    msgSound.current.play().catch(() => {});
+    setMessages(prev => [...prev, { from: 'You', image: localURL, time: now.toISOString(), animate: true }]);
 
     e.target.value = null;
   };
@@ -195,11 +198,16 @@ function App() {
             msgObj = { kind: "text", text, replyTo: null };
           }
 
+          msgSound.current.currentTime = 0;
+          msgSound.current.play().catch(() => {});
+
           setMessages(prev => [...prev, {
             from: peerNameRef.current,
             text: msgObj.text,
             time: now.toISOString(),
-            replyTo: msgObj.replyTo ?? null
+            replyTo: msgObj.replyTo ?? null,
+            animate: true
+
           }]);
         } catch (err) {
           console.error("❌ Decryption failed:", err);
@@ -243,7 +251,7 @@ function App() {
       if (payload.type === "peer_left") {
         let countdown = 5;
         setExitCountdown(countdown);
-        setMessages(prev => [...prev, { from: "System", text: `${peerNameRef.current} has left. You will be redirected in 5s...`, time: now.toISOString() }]);
+        setMessages(prev => [...prev, { from: "System", text: `${peerNameRef.current} has left. You will be redirected in 5s...`, time: now.toISOString(), animate: true }]);
         countdownTimerRef.current = setInterval(() => {
           countdown--;
           setExitCountdown(countdown);
@@ -267,7 +275,9 @@ function App() {
 
           const blob = new Blob([decrypted], { type: payload.mime });
           const url = URL.createObjectURL(blob);
-          setMessages(prev => [...prev, { from: peerNameRef.current, image: url, time: now.toISOString() }]);
+          msgSound.current.currentTime = 0;
+          msgSound.current.play().catch(() => {});
+          setMessages(prev => [...prev, { from: peerNameRef.current, image: url, time: now.toISOString(), animate: true }]);
         } catch (err) {
           console.error("❌ Image decryption failed:", err);
         }
@@ -310,7 +320,10 @@ function App() {
       iv: bufferToBase64(iv)
     }));
 
-    setMessages(prev => [...prev, { from: 'You', text: input, time: now.toISOString(), replyTo: payloadObj.replyTo }]);
+    msgSound.current.currentTime = 0;
+    msgSound.current.play().catch(() => {});
+
+    setMessages(prev => [...prev, { from: 'You', text: input, time: now.toISOString(), replyTo: payloadObj.replyTo, animate: true }]);
     setInput('');
     setReplyTarget(null);
   };
@@ -441,7 +454,7 @@ function App() {
                 <div
                   key={i}
                   ref={el => { if (el) messageRefs.current[i] = el; }}
-                  className={`chat-bubble ${msg.from === 'You' ? 'outgoing' : 'incoming'}`}
+                  className={`chat-bubble ${msg.from === 'You' ? 'outgoing' : 'incoming'} ${msg.animate ? 'bubble-in' : ''}`}
                   onMouseEnter={() => setHoveredMessage(i)}
                   onMouseLeave={() => setHoveredMessage(null)}
                   onTouchStart={() => {
