@@ -134,7 +134,7 @@ html, body {
 
 .emoji-popup {
   position: absolute;
-  top: calc(100% + 6px);
+  top: 100%;
   bottom: auto;
   right: 0;
   background: #fff;
@@ -457,6 +457,79 @@ html, body {
   font-size: 1.1rem;
   margin-top: 4px;
   text-align: right;
+}
+
+/* Reply UI above input */
+.reply-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: #fff;
+  border-left: 4px solid #6a6a6a;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.reply-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reply-preview {
+  color: #555;
+  margin-left: 0.4rem;
+}
+
+.reply-cancel {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+/* Quoted block inside a bubble */
+.quoted-reply {
+  background: rgba(0,0,0,0.04);
+  border-left: 3px solid #888;
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+
+.incoming .quoted-reply { border-left-color: #1976d2; }
+.outgoing .quoted-reply { border-left-color: #2e7d32; }
+
+.quoted-author {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #444;
+  margin-bottom: 2px;
+}
+
+.quoted-snippet {
+  font-size: 0.9rem;
+  color: #333;
+}
+
+/* Brief highlight when jumping */
+.reply-highlight {
+  animation: replyFlash 2s ease;
+}
+@keyframes replyFlash {
+  0%   { box-shadow: 0 0 0px rgba(255, 230, 0, 0); }
+  30%  { box-shadow: 0 0 10px rgba(255, 230, 0, 0.9); }
+  100% { box-shadow: 0 0 0px rgba(255, 230, 0, 0); }
+}
+
+/* Small tweak so the reply icon sits nicely with emojis */
+.reply-action {
+  font-size: 1.1rem;
+  margin-right: 6px;
+  cursor: pointer;
 }
 
 

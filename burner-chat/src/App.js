@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import './App.css';
 
-const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
-// const SERVER_URL = "ws://localhost:8000/ws";
+// const SERVER_URL = "wss://burner-chat-server.onrender.com/ws";
+const SERVER_URL = "ws://localhost:8000/ws";
 const emojiOptions = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
 
@@ -38,6 +38,7 @@ function App() {
   const [messageReactions, setMessageReactions] = useState({});
   const [hoveredMessage, setHoveredMessage] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [replyTarget, setReplyTarget] = useState(null);
 
   const privateKeyRef = useRef(null);
   const sharedKeyRef = useRef(null);
@@ -49,6 +50,7 @@ function App() {
   const messagesEndRef = useRef(null);
   const peerNameRef = useRef('Peer');
   const longPressTimeoutRef = useRef(null);
+  const messageRefs = useRef({});
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -183,12 +185,27 @@ function App() {
             sharedKeyRef.current,
             ciphertext
           );
-          const message = new TextDecoder().decode(decrypted);
-          setMessages(prev => [...prev, { from: peerNameRef.current, text: message, time: now.toISOString() }]);
+          const text = new TextDecoder().decode(decrypted);
+
+          let msgObj;
+          try {
+            msgObj = JSON.parse(text);
+          } catch {
+            // backward-compat: older clients sent raw text
+            msgObj = { kind: "text", text, replyTo: null };
+          }
+
+          setMessages(prev => [...prev, {
+            from: peerNameRef.current,
+            text: msgObj.text,
+            time: now.toISOString(),
+            replyTo: msgObj.replyTo ?? null
+          }]);
         } catch (err) {
           console.error("❌ Decryption failed:", err);
         }
       }
+
 
       if (payload.type === "typing") {
         setShowTypingBubble(true);
@@ -248,7 +265,13 @@ function App() {
     if (!input.trim() || !sharedKeyRef.current) return;
 
     const now = new Date();
-    const encoded = new TextEncoder().encode(input);
+    const payloadObj = {
+      kind: "text",
+      text: input,
+      replyTo: replyTarget ? replyTarget.index : null,
+    };
+    const plain = JSON.stringify(payloadObj);
+    const encoded = new TextEncoder().encode(plain);
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const ciphertext = await window.crypto.subtle.encrypt(
       { name: "AES-GCM", iv },
@@ -256,15 +279,17 @@ function App() {
       encoded
     );
 
-    socketRef.current.send(JSON.stringify({
+    socketRef.current?.send(JSON.stringify({
       type: "msg",
       data: bufferToBase64(ciphertext),
       iv: bufferToBase64(iv)
     }));
 
-    setMessages(prev => [...prev, { from: 'You', text: input, time: now.toISOString() }]);
+    setMessages(prev => [...prev, { from: 'You', text: input, time: now.toISOString(), replyTo: payloadObj.replyTo }]);
     setInput('');
+    setReplyTarget(null);
   };
+
 
   const handleTyping = (e) => {
     setInput(e.target.value);
@@ -334,7 +359,7 @@ function App() {
                 style={{ marginLeft: '0.5rem', cursor: 'pointer', color: '#114b5f' }}
               ></i>
             </span>
-            <span>Talking to <strong>{peerName}</strong> | <i class="fa-solid fa-right-from-bracket" onClick={handleExitChat} title="Exit chat"></i></span>
+            <span>Talking to <strong>{peerName}</strong> | <i className="fa-solid fa-right-from-bracket" onClick={handleExitChat} title="Exit chat"></i></span>
           </div>
 
           {!isEncrypted && (
@@ -350,69 +375,106 @@ function App() {
                 {formatDate(messages[0].time)}
               </div>
             )}
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`chat-bubble ${msg.from === 'You' ? 'outgoing' : 'incoming'}`}
-                onMouseEnter={() => setHoveredMessage(i)}
-                onMouseLeave={() => setHoveredMessage(null)}
-                onTouchStart={() => {
-                longPressTimeoutRef.current = setTimeout(() => {
-                    setHoveredMessage(i);
-                  }, 1000);
-                }}
-                onTouchEnd={() => {
-                  clearTimeout(longPressTimeoutRef.current);
-                }}
-                onTouchMove={() => {
-                  clearTimeout(longPressTimeoutRef.current);
-                }}
-              >
-                <div className="chat-author">{msg.from}</div>
-                {msg.image ? (
-                  <div className="chat-image" onClick={() => setSelectedImage(msg.image)}>
-                    <img src={msg.image} alt="sent" />
-                  </div>
-                ) : (
-                  <div className="chat-text">{msg.text}</div>
-                )}
-                {msg.time && (
-                  <div className="chat-time">{formatTime(msg.time)}</div>
-                )}
+            
+            {messages.map((msg, i) => {
+              const quoted = (typeof msg.replyTo === 'number') ? messages[msg.replyTo] : null;
 
-                {hoveredMessage === i && msg.from !== 'You' && (
-                  <div className="emoji-popup">
-                    {emojiOptions.map((emoji) => (
+              return (
+                <div
+                  key={i}
+                  ref={el => { if (el) messageRefs.current[i] = el; }}
+                  className={`chat-bubble ${msg.from === 'You' ? 'outgoing' : 'incoming'}`}
+                  onMouseEnter={() => setHoveredMessage(i)}
+                  onMouseLeave={() => setHoveredMessage(null)}
+                  onTouchStart={() => {
+                    longPressTimeoutRef.current = setTimeout(() => {
+                      setHoveredMessage(i);
+                    }, 1000);
+                  }}
+                  onTouchEnd={() => clearTimeout(longPressTimeoutRef.current)}
+                  onTouchMove={() => clearTimeout(longPressTimeoutRef.current)}
+                >
+                  <div className="chat-author">{msg.from}</div>
+
+                  {quoted && (
+                    <div
+                      className="quoted-reply"
+                      onClick={() => {
+                        const node = messageRefs.current[msg.replyTo];
+                        if (node) {
+                          node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          node.classList.add('reply-highlight');
+                          setTimeout(() => node.classList.remove('reply-highlight'), 1200);
+                        }
+                      }}
+                      title="Jump to replied message"
+                    >
+                      <div className="quoted-author">{quoted.from}</div>
+                      <div className="quoted-snippet">
+                        {quoted.image ? "[image]" : (quoted.text || "")}
+                      </div>
+                    </div>
+                  )}
+
+                  {msg.image ? (
+                    <div className="chat-image" onClick={() => setSelectedImage(msg.image)}>
+                      <img src={msg.image} alt="sent" />
+                    </div>
+                  ) : (
+                    <div className="chat-text">{msg.text}</div>
+                  )}
+
+                  {msg.time && <div className="chat-time">{formatTime(msg.time)}</div>}
+
+                  {hoveredMessage === i && (
+                    <div className="emoji-popup">
                       <span
-                        key={emoji}
-                        className="emoji-option"
-                        onClick={() => {
-                          setMessageReactions((prev) => ({
-                            ...prev,
-                            [i]: prev[i] === emoji ? null : emoji,
-                          }));
-
-                          socketRef.current.send(JSON.stringify({
-                            type: "reaction",
+                        className="reply-action"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const isImage = !!msg.image;
+                          const preview = isImage ? "[image]" : (msg.text || "");
+                          setReplyTarget({
                             index: i,
-                            emoji: emoji === messageReactions[i] ? null : emoji,
-                          }));
-
+                            author: msg.from,
+                            preview,
+                            isImage
+                          });
                         }}
+                        title="Reply"
                       >
-                        {emoji}
+                        ↩
                       </span>
-                    ))}
-                  </div>
-                )}
+                      {emojiOptions.map((emoji) => (
+                        <span
+                          key={emoji}
+                          className="emoji-option"
+                          onClick={() => {
+                            setMessageReactions((prev) => ({
+                              ...prev,
+                              [i]: prev[i] === emoji ? null : emoji,
+                            }));
+                            socketRef.current?.readyState === WebSocket.OPEN &&
+                              socketRef.current.send(JSON.stringify({
+                                type: "reaction",
+                                index: i,
+                                emoji: emoji === messageReactions[i] ? null : emoji,
+                              }));
+                          }}
+                        >
+                          {emoji}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
-                {messageReactions[i] && (
-                  <div className="emoji-reaction">
-                    {messageReactions[i]}
-                  </div>
-                )}
-              </div>
-            ))}
+                  {messageReactions[i] && (
+                    <div className="emoji-reaction">{messageReactions[i]}</div>
+                  )}
+                </div>
+              );
+            })}
+
 
             {showTypingBubble && (
               <div className="chat-bubble incoming">
@@ -432,6 +494,18 @@ function App() {
             </div>
           )}
 
+          {replyTarget && (
+            <div className="reply-pill">
+              <div className="reply-line">
+                <strong>{replyTarget.author}</strong>
+                <span className="reply-preview">
+                  {replyTarget.isImage ? " [image]" : ` ${replyTarget.preview?.slice(0, 80)}`}
+                </span>
+              </div>
+              <button className="reply-cancel" onClick={() => setReplyTarget(null)}>×</button>
+            </div>
+          )}
+
           <div className="chat-input">
             <input
               className="input"
@@ -441,7 +515,7 @@ function App() {
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             />
             <button className="button send" onClick={sendMessage}>
-              <i class="fa-solid fa-paper-plane"></i>
+              <i className="fa-solid fa-paper-plane"></i>
             </button>
             <input
               type="file"
