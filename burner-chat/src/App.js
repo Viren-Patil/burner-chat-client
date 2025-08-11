@@ -383,6 +383,7 @@ function App() {
     setJoined(false);
     setRoom('');
     setMessages([]);
+    setMessageReactions({});
     setInput('');
     setIsEncrypted(false);
     setExitCountdown(null);
