@@ -564,6 +564,7 @@ function App() {
                                 index: i,
                                 emoji: emoji === messageReactions[i] ? null : emoji,
                               }));
+                            setHoveredMessage(null);
                           }}
                         >
                           {emoji}
