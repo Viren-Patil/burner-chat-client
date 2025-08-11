@@ -550,7 +550,7 @@ function App() {
                       >
                         ↩
                       </span>
-                      {emojiOptions.map((emoji) => (
+                      {msg.from !== "You" && emojiOptions.map((emoji) => (
                         <span
                           key={emoji}
                           className="emoji-option"
